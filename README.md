@@ -36,4 +36,4 @@ mvn "-Dmaven.repo.local=$PWD\.mvn-local-repository" javafx:run
 
 ## 词典数据
 
-当前 Demo 通过 Free Dictionary API 按需查询英文单词，提取音标与最多五条常用英文义项；查询结果仅在用户点击“加入我的词图”后保存到本地 SQLite 词库。词典服务被封装在 `DictionaryService` 中，后续可替换为已授权的商业词典、Wiktionary 合规数据，或本地 WordNet 数据源。
+当前 Demo 通过 Datamuse 开放词典按需查询英文单词，提取最多五条常用英文义项；查询结果仅在用户点击“加入我的词图”后保存到本地 SQLite 词库。词典服务被封装在 `DictionaryService` 中，后续可替换为已授权的商业词典、Wiktionary 合规数据，或本地 WordNet 数据源。
