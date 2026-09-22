@@ -1,4 +1,7 @@
+com\englishwordbank\DictionaryService$DictionaryResult.class
 com\englishwordbank\Similarity.class
+com\englishwordbank\DictionaryService$DictionaryException.class
+com\englishwordbank\DictionaryService.class
 com\englishwordbank\Settings.class
 com\englishwordbank\SimilarWord.class
 com\englishwordbank\Word.class
