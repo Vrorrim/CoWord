@@ -60,6 +60,9 @@ public class App extends Application {
         Label subtitle = new Label("把陌生词变成属于你的认知网络");
         subtitle.getStyleClass().add("subtitle");
         VBox brand = new VBox(2, title, subtitle);
+        brand.setMinWidth(200);
+        brand.setPrefWidth(250);
+        brand.setMaxWidth(250);
 
         Button chooseFolder = new Button("更改词库位置");
         chooseFolder.setOnAction(event -> chooseDataFolder(stage));
@@ -77,7 +80,15 @@ public class App extends Application {
         addWord.setOnAction(event -> openAddWordWindow());
         HBox searchBox = new HBox(0, search, addWord);
         searchBox.getStyleClass().add("header-search-box");
+        searchBox.setMinWidth(220);
+        searchBox.setPrefWidth(310);
+        searchBox.setMaxWidth(310);
         VBox location = new VBox(3, new Label("本地词库目录"), pathLabel);
+        location.setMinWidth(170);
+        location.setPrefWidth(250);
+        location.setMaxWidth(250);
+        pathLabel.setMaxWidth(250);
+        pathLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
         HBox box = new HBox(14, brand, new Region(), searchBox, location, studyCards, chooseFolder);
         HBox.setHgrow(box.getChildren().get(1), Priority.ALWAYS);
         box.setAlignment(Pos.CENTER_LEFT);
