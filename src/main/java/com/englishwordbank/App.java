@@ -20,6 +20,7 @@ import java.util.concurrent.CompletionException;
 
 public class App extends Application {
     private final DictionaryService dictionaryService = new DictionaryService();
+    private final EcdictInstaller ecdictInstaller = new EcdictInstaller();
     private WordRepository repository;
     private Path dataDirectory;
     private final ListView<Word> wordList = new ListView<>();
@@ -95,6 +96,12 @@ public class App extends Application {
         dictionaryStatus.getStyleClass().add("muted");
         Button lookup = new Button("查询词典");
         lookup.setOnAction(event -> lookupDictionary(wordInput, definitionInput, dictionaryStatus, lookup));
+        Label chineseDictionaryStatus = new Label(repository.hasChineseDictionary()
+                ? "英汉词典已安装：离线优先"
+                : "请先安装离线英汉词典，以获得中文释义");
+        chineseDictionaryStatus.getStyleClass().add("muted");
+        Button installChineseDictionary = new Button("安装离线英汉词典（约 63MB）");
+        installChineseDictionary.setOnAction(event -> installChineseDictionary(installChineseDictionary, chineseDictionaryStatus));
 
         Label thresholdLabel = new Label("形近敏感度：平衡（≥ 0.78）");
         Slider threshold = new Slider(0.60, 0.95, 0.78);
@@ -113,6 +120,7 @@ public class App extends Application {
                 field("单词", wordInput),
                 field("第一认知", impressionInput),
                 field("词典资料", definitionInput),
+                installChineseDictionary, chineseDictionaryStatus,
                 lookup, dictionaryStatus,
                 thresholdLabel, threshold, add);
         panel.getStyleClass().add("panel");
@@ -177,6 +185,22 @@ public class App extends Application {
             showError("请输入一个英文单词或短语后再查询。");
             return;
         }
+        if (repository.findChineseDictionaryEntry(text).map(entry -> {
+            String detail = "中文释义\n" + entry.translation()
+                    + (entry.definition().isBlank() ? "" : "\n\n英文补充释义\n" + entry.definition());
+            if (!entry.phonetic().isBlank()) detail = "/" + entry.phonetic() + "/\n" + detail;
+            definitionInput.setText(detail);
+            dictionaryStatus.setText("来源：ECDICT（MIT）· 本地离线英汉词典");
+            statusLabel.setText("已获取 “" + entry.word() + "” 的中文释义，请补充第一认知后加入词图。");
+            return true;
+        }).orElse(false)) {
+            return;
+        }
+        if (!repository.hasChineseDictionary()) {
+            dictionaryStatus.setText("请先点击“安装离线英汉词典”，安装完成后即可查询中文释义。");
+            statusLabel.setText("尚未安装离线英汉词典。");
+            return;
+        }
         lookupButton.setDisable(true);
         dictionaryStatus.setText("正在查询词典…");
         dictionaryService.lookup(text).whenComplete((result, error) -> Platform.runLater(() -> {
@@ -193,6 +217,26 @@ public class App extends Application {
             definitionInput.setText(detail);
             dictionaryStatus.setText("来源：" + result.source() + " · 已提取常用义项");
             statusLabel.setText("已从词典获取 “" + result.word() + "” 的资料，请补充第一认知后加入词图。");
+        }));
+    }
+
+    private void installChineseDictionary(Button installButton, Label installationStatus) {
+        if (repository.hasChineseDictionary()) {
+            installationStatus.setText("英汉词典已安装；重新安装会覆盖本地词典数据。");
+        }
+        installButton.setDisable(true);
+        installationStatus.setText("正在下载并导入英汉词典，这可能需要几分钟…");
+        statusLabel.setText("正在安装离线英汉词典，请保持应用开启。");
+        ecdictInstaller.install(dataDirectory, repository).whenComplete((count, error) -> Platform.runLater(() -> {
+            installButton.setDisable(false);
+            if (error != null) {
+                Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+                installationStatus.setText("安装失败：" + cause.getMessage());
+                statusLabel.setText("离线英汉词典安装失败。");
+                return;
+            }
+            installationStatus.setText("英汉词典已安装：" + count + " 条中文词条，可离线查询。");
+            statusLabel.setText("离线英汉词典安装完成，中文释义已可用。");
         }));
     }
 

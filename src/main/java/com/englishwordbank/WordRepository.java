@@ -1,5 +1,13 @@
 package com.englishwordbank;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.*;
 import java.util.ArrayList;
@@ -14,6 +22,8 @@ public final class WordRepository {
         try (Connection connection = DriverManager.getConnection(url); Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS words (text TEXT PRIMARY KEY, first_impression TEXT NOT NULL, definition TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS similar_links (left_word TEXT NOT NULL, right_word TEXT NOT NULL, score REAL NOT NULL, PRIMARY KEY (left_word, right_word))");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS dictionary_entries (word TEXT PRIMARY KEY, phonetic TEXT NOT NULL, translation TEXT NOT NULL, definition TEXT NOT NULL)");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_dictionary_entries_word ON dictionary_entries(word)");
         } catch (SQLException e) { throw new IllegalStateException("无法初始化本地词库", e); }
     }
     public Optional<Word> find(String text) { return allWords().stream().filter(word -> word.text().equals(text)).findFirst(); }
@@ -39,4 +49,49 @@ public final class WordRepository {
         } catch (SQLException e) { throw new IllegalStateException("无法写入本地词库", e); }
         return matches;
     }
+
+    public Optional<LocalDictionaryEntry> findChineseDictionaryEntry(String word) {
+        try (Connection connection = DriverManager.getConnection(url);
+             PreparedStatement statement = connection.prepareStatement("SELECT word, phonetic, translation, definition FROM dictionary_entries WHERE word = ?")) {
+            statement.setString(1, word.trim().toLowerCase());
+            ResultSet result = statement.executeQuery();
+            return result.next() ? Optional.of(new LocalDictionaryEntry(result.getString(1), result.getString(2), result.getString(3), result.getString(4))) : Optional.empty();
+        } catch (SQLException e) { throw new IllegalStateException("无法读取离线英汉词典", e); }
+    }
+
+    public boolean hasChineseDictionary() {
+        try (Connection connection = DriverManager.getConnection(url);
+             Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("SELECT EXISTS(SELECT 1 FROM dictionary_entries LIMIT 1)")) {
+            return result.next() && result.getInt(1) == 1;
+        } catch (SQLException e) { throw new IllegalStateException("无法检查离线英汉词典", e); }
+    }
+
+    public int importChineseDictionary(Path csvFile) {
+        String insert = "INSERT OR REPLACE INTO dictionary_entries(word, phonetic, translation, definition) VALUES (?, ?, ?, ?)";
+        try (BufferedReader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8);
+             CSVParser csv = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).get().parse(reader);
+             Connection connection = DriverManager.getConnection(url);
+             PreparedStatement statement = connection.prepareStatement(insert)) {
+            connection.setAutoCommit(false);
+            try (Statement clear = connection.createStatement()) { clear.executeUpdate("DELETE FROM dictionary_entries"); }
+            int count = 0;
+            for (CSVRecord record : csv) {
+                String word = record.get("word").trim().toLowerCase();
+                String translation = record.get("translation").trim();
+                if (word.isBlank() || translation.isBlank()) continue;
+                statement.setString(1, word);
+                statement.setString(2, record.get("phonetic").trim());
+                statement.setString(3, translation);
+                statement.setString(4, record.get("definition").trim());
+                statement.addBatch();
+                if (++count % 1_000 == 0) statement.executeBatch();
+            }
+            statement.executeBatch();
+            connection.commit();
+            return count;
+        } catch (SQLException | IOException e) { throw new IllegalStateException("无法导入离线英汉词典", e); }
+    }
+
+    public record LocalDictionaryEntry(String word, String phonetic, String translation, String definition) { }
 }
