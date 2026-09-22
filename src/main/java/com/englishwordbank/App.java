@@ -1,6 +1,7 @@
 package com.englishwordbank;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,18 +15,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionException;
 
 public class App extends Application {
-    private static final Map<String, String> DEMO_DICTIONARY = Map.of(
-            "deposit", "v. 存放；沉积  n. 存款；押金；沉积物",
-            "derive", "v. 得到；源自",
-            "deprive", "v. 剥夺；使丧失",
-            "sediment", "n. 沉积物；沉淀物",
-            "resource", "n. 资源；资料"
-    );
-
+    private final DictionaryService dictionaryService = new DictionaryService();
     private WordRepository repository;
     private Path dataDirectory;
     private final ListView<Word> wordList = new ListView<>();
@@ -85,7 +79,7 @@ public class App extends Application {
     private VBox addPanel() {
         Label heading = new Label("添加一个词");
         heading.getStyleClass().add("section-title");
-        Label hint = new Label("先留下你的第一印象，再让它逐步长出更多意义。\n本 Demo 内置少量示例词典资料。 ");
+        Label hint = new Label("先查询词典资料，再留下你的第一认知。词典查询不会阻塞界面。");
         hint.setWrapText(true);
         hint.getStyleClass().add("muted");
 
@@ -95,13 +89,12 @@ public class App extends Application {
         impressionInput.setPromptText("我第一眼觉得它像什么？\n例如：和钱、银行有关");
         impressionInput.setPrefRowCount(4);
         TextArea definitionInput = new TextArea();
-        definitionInput.setPromptText("基础释义（输入单词后会提供 Demo 建议）");
+        definitionInput.setPromptText("点击“查询词典”后自动填充；你也可以手动编辑");
         definitionInput.setPrefRowCount(3);
-
-        wordInput.textProperty().addListener((obs, oldValue, value) -> {
-            String suggestion = DEMO_DICTIONARY.get(value.trim().toLowerCase());
-            if (suggestion != null && definitionInput.getText().isBlank()) definitionInput.setText(suggestion);
-        });
+        Label dictionaryStatus = new Label("尚未查询");
+        dictionaryStatus.getStyleClass().add("muted");
+        Button lookup = new Button("查询词典");
+        lookup.setOnAction(event -> lookupDictionary(wordInput, definitionInput, dictionaryStatus, lookup));
 
         Label thresholdLabel = new Label("形近敏感度：平衡（≥ 0.78）");
         Slider threshold = new Slider(0.60, 0.95, 0.78);
@@ -120,6 +113,7 @@ public class App extends Application {
                 field("单词", wordInput),
                 field("第一认知", impressionInput),
                 field("词典资料", definitionInput),
+                lookup, dictionaryStatus,
                 thresholdLabel, threshold, add);
         panel.getStyleClass().add("panel");
         panel.setPrefWidth(290);
@@ -175,6 +169,31 @@ public class App extends Application {
         HBox box = new HBox(statusLabel);
         box.getStyleClass().add("status-bar");
         return box;
+    }
+
+    private void lookupDictionary(TextField wordInput, TextArea definitionInput, Label dictionaryStatus, Button lookupButton) {
+        String text = wordInput.getText().trim().toLowerCase();
+        if (!text.matches("[a-z][a-z' -]*")) {
+            showError("请输入一个英文单词或短语后再查询。");
+            return;
+        }
+        lookupButton.setDisable(true);
+        dictionaryStatus.setText("正在查询词典…");
+        dictionaryService.lookup(text).whenComplete((result, error) -> Platform.runLater(() -> {
+            lookupButton.setDisable(false);
+            if (error != null) {
+                Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+                String message = cause instanceof DictionaryService.DictionaryException
+                        ? cause.getMessage() : "网络连接失败，请检查网络后重试。";
+                dictionaryStatus.setText("查询失败：" + message);
+                statusLabel.setText("词典查询失败，未写入词库。");
+                return;
+            }
+            String detail = result.phonetic().isBlank() ? result.definition() : result.phonetic() + "\n" + result.definition();
+            definitionInput.setText(detail);
+            dictionaryStatus.setText("来源：" + result.source() + " · 已提取常用义项");
+            statusLabel.setText("已从词典获取 “" + result.word() + "” 的资料，请补充第一认知后加入词图。");
+        }));
     }
 
     private void addWord(TextField wordInput, TextArea impressionInput, TextArea definitionInput, double threshold) {

@@ -33,3 +33,7 @@ mvn "-Dmaven.repo.local=$PWD\.mvn-local-repository" javafx:run
 2. 将“本次发现的关联”改为可确认、删除和编辑的关系卡片。
 3. 接入国内大模型 API，提供语境释义、短语解释和长难句拆解。
 4. 使用 `jpackage` 生成无需用户安装 Java 的 Windows 安装包。
+
+## 词典数据
+
+当前 Demo 通过 Free Dictionary API 按需查询英文单词，提取音标与最多五条常用英文义项；查询结果仅在用户点击“加入我的词图”后保存到本地 SQLite 词库。词典服务被封装在 `DictionaryService` 中，后续可替换为已授权的商业词典、Wiktionary 合规数据，或本地 WordNet 数据源。
