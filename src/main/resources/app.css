@@ -18,3 +18,20 @@
 .list-cell:filled:selected .word-card { -fx-background-color: #eaeaff; }
 .insight-panel { -fx-background-color: #fcfbff; }
 .status-bar { -fx-padding: 8 24; -fx-background-color: #eef0f7; -fx-text-fill: #667085; -fx-font-size: 12px; }
+.study-button { -fx-background-color: #eef0ff; -fx-text-fill: #4746b7; -fx-font-weight: bold; -fx-background-radius: 8; }
+.mastery-label { -fx-text-fill: #68718a; -fx-font-size: 11px; }
+.study-root { -fx-background-color: linear-gradient(to bottom right, #f2f4ff, #fbf8ff); }
+.study-top-bar { -fx-padding: 20 28; -fx-background-color: rgba(255,255,255,0.8); -fx-border-color: transparent transparent #e5e7f2 transparent; }
+.study-title { -fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: #20223d; }
+.flash-card { -fx-background-color: white; -fx-background-radius: 28; -fx-border-color: #e3e5f2; -fx-border-radius: 28; -fx-effect: dropshadow(three-pass-box, rgba(67, 60, 130, 0.16), 28, 0.15, 0, 8); -fx-cursor: hand; }
+.flipped-card { -fx-background-color: #fdfcff; -fx-border-color: #bab6f5; }
+.flash-word { -fx-font-size: 48px; -fx-font-weight: bold; -fx-text-fill: #31309a; }
+.flash-state { -fx-background-color: #eeedff; -fx-text-fill: #5552be; -fx-padding: 5 12; -fx-background-radius: 14; -fx-font-size: 12px; }
+.flash-prompt { -fx-font-size: 15px; -fx-text-fill: #68718a; }
+.flash-definition { -fx-font-size: 17px; -fx-text-fill: #252b3d; -fx-line-spacing: 5px; -fx-text-alignment: center; }
+.flash-memory { -fx-font-size: 14px; -fx-text-fill: #9a5d22; -fx-text-alignment: center; }
+.study-help { -fx-font-size: 12px; -fx-text-fill: #72798d; }
+.grade-button { -fx-min-width: 120; -fx-padding: 10 20; -fx-background-radius: 9; -fx-font-weight: bold; }
+.grade-hard { -fx-background-color: #fff0ee; -fx-text-fill: #b44e42; }
+.grade-review { -fx-background-color: #fff8df; -fx-text-fill: #956c07; }
+.grade-mastered { -fx-background-color: #e7f7ed; -fx-text-fill: #23764b; }

@@ -57,9 +57,12 @@ public class App extends Application {
 
         Button chooseFolder = new Button("更改词库位置");
         chooseFolder.setOnAction(event -> chooseDataFolder(stage));
+        Button studyCards = new Button("开始词卡学习");
+        studyCards.getStyleClass().add("study-button");
+        studyCards.setOnAction(event -> openStudyCards());
         pathLabel.getStyleClass().add("path-label");
         VBox location = new VBox(3, new Label("本地词库目录"), pathLabel);
-        HBox box = new HBox(26, brand, new Region(), location, chooseFolder);
+        HBox box = new HBox(14, brand, new Region(), location, studyCards, chooseFolder);
         HBox.setHgrow(box.getChildren().get(1), Priority.ALWAYS);
         box.setAlignment(Pos.CENTER_LEFT);
         box.getStyleClass().add("header");
@@ -144,7 +147,9 @@ public class App extends Application {
                 definition.setWrapText(true);
                 Label impression = new Label("第一认知：" + blankAsDash(word.firstImpression()));
                 impression.getStyleClass().add("impression");
-                VBox card = new VBox(4, title, definition, impression);
+                Label mastery = new Label("学习状态：" + word.mastery().label());
+                mastery.getStyleClass().add("mastery-label");
+                VBox card = new VBox(4, title, definition, impression, mastery);
                 card.getStyleClass().add("word-card");
                 setGraphic(card);
             }
@@ -252,7 +257,7 @@ public class App extends Application {
         }
         String definition = definitionInput.getText().trim();
         if (definition.isBlank()) definition = "暂无词典资料（Demo 可手动补充）";
-        Word word = new Word(text, impressionInput.getText().trim(), definition);
+        Word word = new Word(text, impressionInput.getText().trim(), definition, Word.Mastery.NEW);
         List<SimilarWord> matches = repository.addWordAndFindSimilar(word, threshold);
         refreshWords();
         wordInput.clear(); impressionInput.clear(); definitionInput.clear();
@@ -264,6 +269,15 @@ public class App extends Application {
         List<Word> words = repository.allWords();
         wordList.setItems(FXCollections.observableArrayList(words));
         countLabel.setText(words.size() + " 个词");
+    }
+
+    private void openStudyCards() {
+        List<Word> words = repository.allWords();
+        if (words.isEmpty()) {
+            showError("词库还是空的，先添加几个单词再开始词卡学习。");
+            return;
+        }
+        new WordCardWindow(repository, words, this::refreshWords).show();
     }
 
     private void chooseDataFolder(Stage stage) {
