@@ -147,6 +147,24 @@ public final class WordRepository {
         } catch (SQLException e) { throw new IllegalStateException("无法读取离线英汉词典", e); }
     }
 
+    public List<LocalDictionaryEntry> searchChineseDictionary(String query) {
+        String keyword = query.trim().toLowerCase();
+        if (keyword.isBlank()) return List.of();
+        String sql = "SELECT word, phonetic, translation, definition FROM dictionary_entries "
+                + "WHERE lower(word) LIKE ? OR translation LIKE ? ORDER BY CASE WHEN lower(word) = ? THEN 0 ELSE 1 END, word LIMIT 40";
+        List<LocalDictionaryEntry> result = new ArrayList<>();
+        try (Connection connection = DriverManager.getConnection(url);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            String pattern = "%" + keyword + "%";
+            statement.setString(1, pattern);
+            statement.setString(2, pattern);
+            statement.setString(3, keyword);
+            ResultSet entries = statement.executeQuery();
+            while (entries.next()) result.add(new LocalDictionaryEntry(entries.getString(1), entries.getString(2), entries.getString(3), entries.getString(4)));
+            return result;
+        } catch (SQLException e) { throw new IllegalStateException("无法搜索离线英汉词典", e); }
+    }
+
     public boolean hasChineseDictionary() {
         try (Connection connection = DriverManager.getConnection(url);
              Statement statement = connection.createStatement();

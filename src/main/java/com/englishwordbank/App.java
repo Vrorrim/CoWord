@@ -32,7 +32,6 @@ public class App extends Application {
     private final Label pathLabel = new Label();
     private final Label countLabel = new Label();
     private final Label statusLabel = new Label("准备就绪");
-    private String searchQuery = "";
 
     @Override
     public void start(Stage stage) {
@@ -71,9 +70,9 @@ public class App extends Application {
         studyCards.setOnAction(event -> openStudyCards());
         pathLabel.getStyleClass().add("path-label");
         TextField search = new TextField();
-        search.setPromptText("搜索单词或中文释义");
+        search.setPromptText("输入中文或英文，按 Enter 搜索词典");
         search.getStyleClass().add("header-search");
-        search.textProperty().addListener((obs, oldValue, value) -> { searchQuery = value.trim().toLowerCase(); refreshWords(); });
+        search.setOnAction(event -> searchDictionary(search.getText()));
         Button addWord = new Button("+");
         addWord.getStyleClass().add("header-add-button");
         addWord.setTooltip(new Tooltip("添加单词"));
@@ -187,7 +186,7 @@ public class App extends Application {
             }
             {
                 setOnDragDetected(event -> {
-                    if (getItem() == null || !searchQuery.isBlank()) return;
+                    if (getItem() == null) return;
                     Dragboard dragboard = startDragAndDrop(TransferMode.MOVE);
                     ClipboardContent content = new ClipboardContent();
                     content.putString(getItem().text());
@@ -220,7 +219,7 @@ public class App extends Application {
                 });
             }
         });
-        Label reorderHint = new Label("输入关键词可搜索；上下拖动词条可调整顺序；删除请使用“词库管理”。");
+        Label reorderHint = new Label("顶部可搜索中英文词典并直接加入；上下拖动词条可调整顺序；删除请使用“词库管理”。");
         reorderHint.getStyleClass().add("muted");
         VBox panel = new VBox(8, top, reorderHint, wordList);
         VBox.setVgrow(wordList, Priority.ALWAYS);
@@ -323,11 +322,9 @@ public class App extends Application {
 
     private void refreshWords() {
         List<Word> allWords = repository.allWords();
-        List<Word> words = searchQuery.isBlank() ? allWords : allWords.stream()
-                .filter(word -> word.text().contains(searchQuery) || word.definition().toLowerCase().contains(searchQuery))
-                .toList();
+        List<Word> words = allWords;
         libraryWords.setAll(words);
-        countLabel.setText(searchQuery.isBlank() ? allWords.size() + " 个词" : words.size() + " / " + allWords.size() + " 个词");
+        countLabel.setText(allWords.size() + " 个词");
     }
 
     private int indexOf(String word) {
@@ -371,6 +368,18 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setMinWidth(460);
         stage.show();
+    }
+
+    private void searchDictionary(String query) {
+        if (query == null || query.isBlank()) {
+            statusLabel.setText("请输入中文或英文后按 Enter 搜索词典。");
+            return;
+        }
+        if (!repository.hasChineseDictionary()) {
+            showError("尚未安装离线英汉词典。请先点击右侧 +，在添加单词窗口中安装词典数据。");
+            return;
+        }
+        new DictionarySearchWindow(repository, query.trim(), this::refreshWords).show();
     }
 
     private void chooseDataFolder(Stage stage) {

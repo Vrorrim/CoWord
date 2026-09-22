@@ -36,6 +36,8 @@
 .detail-section { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #4e5264; -fx-padding: 8 0 0 0; }
 .detail-text { -fx-font-size: 14px; -fx-text-fill: #2f3748; -fx-line-spacing: 4px; }
 .detail-memory { -fx-font-size: 14px; -fx-text-fill: #96591f; -fx-line-spacing: 3px; }
+.dictionary-result-row { -fx-padding: 11; -fx-background-color: white; -fx-background-radius: 9; -fx-border-color: #e5e7f0; -fx-border-radius: 9; }
+.direct-add-button { -fx-background-color: #5b5bd6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 7; }
 .study-root { -fx-background-color: linear-gradient(to bottom right, #f2f4ff, #fbf8ff); }
 .study-top-bar { -fx-padding: 20 28; -fx-background-color: rgba(255,255,255,0.8); -fx-border-color: transparent transparent #e5e7f2 transparent; }
 .study-title { -fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: #20223d; }
