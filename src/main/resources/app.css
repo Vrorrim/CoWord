@@ -1,7 +1,7 @@
 .root { -fx-font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; -fx-background-color: #f6f7fb; }
 .header { -fx-padding: 18 24; -fx-background-color: white; -fx-border-color: transparent transparent #e8eaf1 transparent; -fx-min-width: 0; }
 .header-search-box { -fx-background-color: #f3f4f8; -fx-background-radius: 9; -fx-border-color: #e1e4ec; -fx-border-radius: 9; }
-.header-search { -fx-pref-width: 276; -fx-min-width: 0; -fx-background-color: transparent; -fx-border-color: transparent; }
+.header-search { -fx-pref-width: 246; -fx-min-width: 0; -fx-background-color: transparent; -fx-border-color: transparent; }
 .header-add-button { -fx-min-width: 34; -fx-min-height: 32; -fx-background-color: #5b5bd6; -fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold; -fx-background-radius: 0 8 8 0; -fx-padding: 0; }
 .app-title { -fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #18233e; }
 .subtitle, .muted, .path-label { -fx-text-fill: #667085; }

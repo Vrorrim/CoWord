@@ -53,15 +53,15 @@ public class App extends Application {
         refreshWords();
     }
 
-    private HBox header(Stage stage) {
+    private BorderPane header(Stage stage) {
         Label title = new Label("English Word Bank");
         title.getStyleClass().add("app-title");
         Label subtitle = new Label("把陌生词变成属于你的认知网络");
         subtitle.getStyleClass().add("subtitle");
         VBox brand = new VBox(2, title, subtitle);
-        brand.setMinWidth(200);
-        brand.setPrefWidth(250);
-        brand.setMaxWidth(250);
+        brand.setMinWidth(0);
+        brand.setPrefWidth(215);
+        brand.setMaxWidth(215);
 
         Button chooseFolder = new Button("更改词库位置");
         chooseFolder.setOnAction(event -> chooseDataFolder(stage));
@@ -79,18 +79,23 @@ public class App extends Application {
         addWord.setOnAction(event -> openAddWordWindow());
         HBox searchBox = new HBox(0, search, addWord);
         searchBox.getStyleClass().add("header-search-box");
-        searchBox.setMinWidth(220);
-        searchBox.setPrefWidth(310);
-        searchBox.setMaxWidth(310);
+        searchBox.setMinWidth(190);
+        searchBox.setPrefWidth(280);
+        searchBox.setMaxWidth(280);
         VBox location = new VBox(3, new Label("本地词库目录"), pathLabel);
-        location.setMinWidth(170);
-        location.setPrefWidth(250);
-        location.setMaxWidth(250);
-        pathLabel.setMaxWidth(250);
+        location.setMinWidth(0);
+        location.setPrefWidth(180);
+        location.setMaxWidth(180);
+        pathLabel.setMaxWidth(180);
         pathLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
-        HBox box = new HBox(14, brand, new Region(), searchBox, location, studyCards, chooseFolder);
-        HBox.setHgrow(box.getChildren().get(1), Priority.ALWAYS);
-        box.setAlignment(Pos.CENTER_LEFT);
+        HBox controls = new HBox(12, location, studyCards, chooseFolder);
+        controls.setAlignment(Pos.CENTER_RIGHT);
+        BorderPane box = new BorderPane();
+        box.setLeft(brand);
+        box.setCenter(searchBox);
+        box.setRight(controls);
+        BorderPane.setAlignment(searchBox, Pos.CENTER);
+        BorderPane.setMargin(searchBox, new Insets(0, 18, 0, 18));
         box.getStyleClass().add("header");
         updatePathLabel();
         return box;
