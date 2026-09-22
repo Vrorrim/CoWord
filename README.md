@@ -1,4 +1,4 @@
-# English Word Bank Demo
+# CoWord
 
 一个本地优先的英语单词库桌面原型。当前演示以下流程：
 
