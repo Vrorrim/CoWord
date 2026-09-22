@@ -19,7 +19,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletionException;
 
 public class App extends Application {
@@ -29,6 +31,10 @@ public class App extends Application {
     private Path dataDirectory;
     private final ListView<Word> wordList = new ListView<>();
     private final ObservableList<Word> libraryWords = FXCollections.observableArrayList();
+    private final Set<String> selectedWords = new LinkedHashSet<>();
+    private boolean batchManaging;
+    private Button batchManageButton;
+    private Button batchDeleteButton;
     private final Label pathLabel = new Label();
     private final Label countLabel = new Label();
     private final Label statusLabel = new Label("准备就绪");
@@ -140,7 +146,16 @@ public class App extends Application {
         Label heading = new Label("我的词库");
         heading.getStyleClass().add("section-title");
         countLabel.getStyleClass().add("badge");
-        HBox top = new HBox(10, heading, countLabel);
+        batchManageButton = new Button("批量管理");
+        batchManageButton.setOnAction(event -> toggleBatchManagement());
+        batchDeleteButton = new Button("删除所选（0）");
+        batchDeleteButton.getStyleClass().add("batch-delete-button");
+        batchDeleteButton.setDisable(true);
+        batchDeleteButton.setVisible(false);
+        batchDeleteButton.setManaged(false);
+        batchDeleteButton.setOnAction(event -> deleteSelectedWords());
+        HBox top = new HBox(10, heading, countLabel, new Region(), batchDeleteButton, batchManageButton);
+        HBox.setHgrow(top.getChildren().get(2), Priority.ALWAYS);
         top.setAlignment(Pos.CENTER_LEFT);
         wordList.setPlaceholder(new Label("还没有单词。试着添加 deposit 和 derive。"));
         wordList.setItems(libraryWords);
@@ -155,15 +170,23 @@ public class App extends Application {
                 impression.getStyleClass().add("impression");
                 Label mastery = new Label("学习状态：" + word.mastery().label());
                 mastery.getStyleClass().add("mastery-label");
-                Button delete = new Button("删除");
-                delete.getStyleClass().add("delete-word-button");
-                delete.setOnAction(event -> deleteWord(word));
-                Region spacer = new Region();
-                HBox titleRow = new HBox(8, title, spacer, delete);
-                HBox.setHgrow(spacer, Priority.ALWAYS);
+                CheckBox select = new CheckBox();
+                select.setSelected(selectedWords.contains(word.text()));
+                select.setVisible(batchManaging);
+                select.setManaged(batchManaging);
+                select.selectedProperty().addListener((obs, oldValue, selected) -> setSelected(word.text(), selected));
+                HBox titleRow = new HBox(8, select, title);
                 VBox card = new VBox(4, titleRow, definition, impression, mastery);
                 card.getStyleClass().add("word-card");
-                setGraphic(card);
+                Button swipeDelete = new Button("删除");
+                swipeDelete.getStyleClass().add("swipe-delete-button");
+                swipeDelete.setOnAction(event -> deleteWord(word));
+                HBox deleteBackground = new HBox(swipeDelete);
+                deleteBackground.setAlignment(Pos.CENTER_RIGHT);
+                deleteBackground.getStyleClass().add("swipe-delete-background");
+                StackPane swipeContainer = new StackPane(deleteBackground, card);
+                setGraphic(swipeContainer);
+                configureSwipe(card, swipeContainer, word);
             }
             {
                 setOnDragDetected(event -> {
@@ -200,7 +223,7 @@ public class App extends Application {
                 });
             }
         });
-        Label reorderHint = new Label("拖动词卡可调整顺序；删除会同时移除相关形近关联。");
+        Label reorderHint = new Label("上下拖动词卡可调整顺序；向左拖动词卡后可单个删除。");
         reorderHint.getStyleClass().add("muted");
         VBox panel = new VBox(8, top, reorderHint, wordList);
         VBox.setVgrow(wordList, Priority.ALWAYS);
@@ -324,6 +347,69 @@ public class App extends Application {
         return -1;
     }
 
+    private void configureSwipe(VBox card, StackPane container, Word word) {
+        final double[] pressX = new double[1];
+        final boolean[] swiping = new boolean[1];
+        card.setOnMousePressed(event -> { pressX[0] = event.getSceneX(); swiping[0] = false; });
+        card.setOnMouseDragged(event -> {
+            double distance = event.getSceneX() - pressX[0];
+            if (distance < -18) {
+                swiping[0] = true;
+                card.setTranslateX(Math.max(-112, distance));
+                event.consume();
+            }
+        });
+        card.setOnMouseReleased(event -> {
+            if (!swiping[0]) return;
+            if (card.getTranslateX() < -62) {
+                card.setTranslateX(-112);
+                statusLabel.setText("已显示 “" + word.text() + "” 的删除操作。");
+            } else {
+                card.setTranslateX(0);
+            }
+            event.consume();
+        });
+        container.setOnMouseClicked(event -> {
+            if (card.getTranslateX() < 0 && event.getTarget() == container) card.setTranslateX(0);
+        });
+    }
+
+    private void toggleBatchManagement() {
+        batchManaging = !batchManaging;
+        if (!batchManaging) selectedWords.clear();
+        batchManageButton.setText(batchManaging ? "完成" : "批量管理");
+        batchDeleteButton.setVisible(batchManaging);
+        batchDeleteButton.setManaged(batchManaging);
+        updateBatchDeleteButton();
+        wordList.refresh();
+    }
+
+    private void setSelected(String word, boolean selected) {
+        if (selected) selectedWords.add(word); else selectedWords.remove(word);
+        updateBatchDeleteButton();
+    }
+
+    private void updateBatchDeleteButton() {
+        if (batchDeleteButton == null) return;
+        batchDeleteButton.setText("删除所选（" + selectedWords.size() + "）");
+        batchDeleteButton.setDisable(selectedWords.isEmpty());
+    }
+
+    private void deleteSelectedWords() {
+        List<String> words = List.copyOf(selectedWords);
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "确定删除选中的 " + words.size() + " 个单词吗？它们的个人笔记和形近关联也会一并删除。",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setTitle("批量删除单词");
+        confirm.setHeaderText(null);
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+        repository.deleteWords(words);
+        selectedWords.clear();
+        refreshWords();
+        statusLabel.setText("已删除 " + words.size() + " 个单词。");
+        updateBatchDeleteButton();
+    }
+
     private void deleteWord(Word word) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                 "确定删除 “" + word.text() + "” 吗？它的个人笔记和形近关联也会一并删除。",
@@ -332,6 +418,7 @@ public class App extends Application {
         confirm.setHeaderText(null);
         if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
         repository.deleteWord(word.text());
+        selectedWords.remove(word.text());
         refreshWords();
         statusLabel.setText("已删除 “" + word.text() + "”。");
     }

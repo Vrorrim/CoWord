@@ -79,6 +79,23 @@ public final class WordRepository {
         } catch (SQLException e) { throw new IllegalStateException("无法删除单词", e); }
     }
 
+    public void deleteWords(List<String> words) {
+        if (words.isEmpty()) return;
+        try (Connection connection = DriverManager.getConnection(url)) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement links = connection.prepareStatement("DELETE FROM similar_links WHERE left_word = ? OR right_word = ?");
+                 PreparedStatement entry = connection.prepareStatement("DELETE FROM words WHERE text = ?")) {
+                for (String word : words) {
+                    links.setString(1, word); links.setString(2, word); links.addBatch();
+                    entry.setString(1, word); entry.addBatch();
+                }
+                links.executeBatch();
+                entry.executeBatch();
+                connection.commit();
+            } catch (SQLException e) { connection.rollback(); throw e; }
+        } catch (SQLException e) { throw new IllegalStateException("无法批量删除单词", e); }
+    }
+
     public void reorderWords(List<Word> words) {
         try (Connection connection = DriverManager.getConnection(url);
              PreparedStatement statement = connection.prepareStatement("UPDATE words SET sort_order = ? WHERE text = ?")) {
