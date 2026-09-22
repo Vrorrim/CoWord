@@ -3,10 +3,14 @@ package com.englishwordbank;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -24,6 +28,7 @@ public class App extends Application {
     private WordRepository repository;
     private Path dataDirectory;
     private final ListView<Word> wordList = new ListView<>();
+    private final ObservableList<Word> libraryWords = FXCollections.observableArrayList();
     private final Label pathLabel = new Label();
     private final Label countLabel = new Label();
     private final Label statusLabel = new Label("准备就绪");
@@ -138,6 +143,7 @@ public class App extends Application {
         HBox top = new HBox(10, heading, countLabel);
         top.setAlignment(Pos.CENTER_LEFT);
         wordList.setPlaceholder(new Label("还没有单词。试着添加 deposit 和 derive。"));
+        wordList.setItems(libraryWords);
         wordList.setCellFactory(list -> new ListCell<>() {
             @Override protected void updateItem(Word word, boolean empty) {
                 super.updateItem(word, empty);
@@ -149,12 +155,54 @@ public class App extends Application {
                 impression.getStyleClass().add("impression");
                 Label mastery = new Label("学习状态：" + word.mastery().label());
                 mastery.getStyleClass().add("mastery-label");
-                VBox card = new VBox(4, title, definition, impression, mastery);
+                Button delete = new Button("删除");
+                delete.getStyleClass().add("delete-word-button");
+                delete.setOnAction(event -> deleteWord(word));
+                Region spacer = new Region();
+                HBox titleRow = new HBox(8, title, spacer, delete);
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                VBox card = new VBox(4, titleRow, definition, impression, mastery);
                 card.getStyleClass().add("word-card");
                 setGraphic(card);
             }
+            {
+                setOnDragDetected(event -> {
+                    if (getItem() == null) return;
+                    Dragboard dragboard = startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent content = new ClipboardContent();
+                    content.putString(getItem().text());
+                    dragboard.setContent(content);
+                    event.consume();
+                });
+                setOnDragOver(event -> {
+                    if (event.getGestureSource() != this && event.getDragboard().hasString()) event.acceptTransferModes(TransferMode.MOVE);
+                    event.consume();
+                });
+                setOnDragEntered(event -> { if (event.getGestureSource() != this) getStyleClass().add("drag-target"); });
+                setOnDragExited(event -> getStyleClass().remove("drag-target"));
+                setOnDragDropped(event -> {
+                    boolean moved = false;
+                    String sourceText = event.getDragboard().getString();
+                    if (sourceText != null && getItem() != null) {
+                        int from = indexOf(sourceText);
+                        int target = getIndex();
+                        if (from >= 0 && from != target) {
+                            Word source = libraryWords.remove(from);
+                            if (from < target) target--;
+                            libraryWords.add(target, source);
+                            repository.reorderWords(List.copyOf(libraryWords));
+                            statusLabel.setText("已调整 “" + source.text() + "” 在词库中的位置。");
+                            moved = true;
+                        }
+                    }
+                    event.setDropCompleted(moved);
+                    event.consume();
+                });
+            }
         });
-        VBox panel = new VBox(12, top, wordList);
+        Label reorderHint = new Label("拖动词卡可调整顺序；删除会同时移除相关形近关联。");
+        reorderHint.getStyleClass().add("muted");
+        VBox panel = new VBox(8, top, reorderHint, wordList);
         VBox.setVgrow(wordList, Priority.ALWAYS);
         panel.getStyleClass().add("panel");
         panel.setMinWidth(330);
@@ -267,8 +315,25 @@ public class App extends Application {
 
     private void refreshWords() {
         List<Word> words = repository.allWords();
-        wordList.setItems(FXCollections.observableArrayList(words));
+        libraryWords.setAll(words);
         countLabel.setText(words.size() + " 个词");
+    }
+
+    private int indexOf(String word) {
+        for (int i = 0; i < libraryWords.size(); i++) if (libraryWords.get(i).text().equals(word)) return i;
+        return -1;
+    }
+
+    private void deleteWord(Word word) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "确定删除 “" + word.text() + "” 吗？它的个人笔记和形近关联也会一并删除。",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setTitle("删除单词");
+        confirm.setHeaderText(null);
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+        repository.deleteWord(word.text());
+        refreshWords();
+        statusLabel.setText("已删除 “" + word.text() + "”。");
     }
 
     private void openStudyCards() {

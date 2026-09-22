@@ -20,6 +20,9 @@
 .status-bar { -fx-padding: 8 24; -fx-background-color: #eef0f7; -fx-text-fill: #667085; -fx-font-size: 12px; }
 .study-button { -fx-background-color: #eef0ff; -fx-text-fill: #4746b7; -fx-font-weight: bold; -fx-background-radius: 8; }
 .mastery-label { -fx-text-fill: #68718a; -fx-font-size: 11px; }
+.delete-word-button { -fx-background-color: transparent; -fx-text-fill: #b55a52; -fx-font-size: 11px; -fx-padding: 2 6; -fx-border-color: transparent; }
+.delete-word-button:hover { -fx-background-color: #fff0ee; -fx-background-radius: 6; }
+.list-cell.drag-target .word-card { -fx-background-color: #e9e8ff; -fx-border-color: #7875e5; -fx-border-radius: 8; }
 .study-root { -fx-background-color: linear-gradient(to bottom right, #f2f4ff, #fbf8ff); }
 .study-top-bar { -fx-padding: 20 28; -fx-background-color: rgba(255,255,255,0.8); -fx-border-color: transparent transparent #e5e7f2 transparent; }
 .study-title { -fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: #20223d; }
