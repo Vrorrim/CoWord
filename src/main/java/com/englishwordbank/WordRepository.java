@@ -113,6 +113,25 @@ public final class WordRepository {
         } catch (SQLException e) { throw new IllegalStateException("无法保存词库排序", e); }
     }
 
+    public List<SimilarWord> similarWordsFor(String word) {
+        String sql = "SELECT CASE WHEN left_word = ? THEN right_word ELSE left_word END AS other_word, score "
+                + "FROM similar_links WHERE left_word = ? OR right_word = ? ORDER BY score DESC";
+        List<SimilarWord> result = new ArrayList<>();
+        try (Connection connection = DriverManager.getConnection(url);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, word);
+            statement.setString(2, word);
+            statement.setString(3, word);
+            ResultSet links = statement.executeQuery();
+            while (links.next()) {
+                String otherWord = links.getString("other_word");
+                double score = links.getDouble("score");
+                find(otherWord).ifPresent(other -> result.add(new SimilarWord(other, score)));
+            }
+            return result;
+        } catch (SQLException e) { throw new IllegalStateException("无法读取单词关联", e); }
+    }
+
     private int nextSortOrder(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM words")) {
             return result.next() ? result.getInt(1) : 1;

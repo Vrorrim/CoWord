@@ -103,12 +103,15 @@ public final class WordCardWindow {
     private VBox gradeBar() {
         Label help = new Label("点击词卡或按空格翻转 · ← → 切换词卡");
         help.getStyleClass().add("study-help");
+        Button details = new Button("查看详情与联想");
+        details.getStyleClass().add("detail-button");
+        details.setOnAction(event -> new WordDetailWindow(repository, words.get(index)).show());
         Button hard = gradeButton("陌生", Word.Mastery.HARD, "grade-hard");
         Button review = gradeButton("模糊", Word.Mastery.REVIEW, "grade-review");
         Button mastered = gradeButton("掌握", Word.Mastery.MASTERED, "grade-mastered");
         HBox actions = new HBox(12, hard, review, mastered);
         actions.setAlignment(Pos.CENTER);
-        VBox box = new VBox(12, help, actions);
+        VBox box = new VBox(12, help, details, actions);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(12, 24, 28, 24));
         return box;

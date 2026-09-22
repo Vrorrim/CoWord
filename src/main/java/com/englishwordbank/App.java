@@ -32,6 +32,7 @@ public class App extends Application {
     private final Label pathLabel = new Label();
     private final Label countLabel = new Label();
     private final Label statusLabel = new Label("准备就绪");
+    private String searchQuery = "";
 
     @Override
     public void start(Stage stage) {
@@ -66,8 +67,18 @@ public class App extends Application {
         studyCards.getStyleClass().add("study-button");
         studyCards.setOnAction(event -> openStudyCards());
         pathLabel.getStyleClass().add("path-label");
+        TextField search = new TextField();
+        search.setPromptText("搜索单词或中文释义");
+        search.getStyleClass().add("header-search");
+        search.textProperty().addListener((obs, oldValue, value) -> { searchQuery = value.trim().toLowerCase(); refreshWords(); });
+        Button addWord = new Button("+");
+        addWord.getStyleClass().add("header-add-button");
+        addWord.setTooltip(new Tooltip("添加单词"));
+        addWord.setOnAction(event -> openAddWordWindow());
+        HBox searchBox = new HBox(0, search, addWord);
+        searchBox.getStyleClass().add("header-search-box");
         VBox location = new VBox(3, new Label("本地词库目录"), pathLabel);
-        HBox box = new HBox(14, brand, new Region(), location, studyCards, chooseFolder);
+        HBox box = new HBox(14, brand, new Region(), searchBox, location, studyCards, chooseFolder);
         HBox.setHgrow(box.getChildren().get(1), Priority.ALWAYS);
         box.setAlignment(Pos.CENTER_LEFT);
         box.getStyleClass().add("header");
@@ -75,13 +86,13 @@ public class App extends Application {
         return box;
     }
 
-    private HBox content() {
-        VBox addPanel = addPanel();
-        VBox libraryPanel = libraryPanel();
-        VBox insightPanel = insightPanel();
-        HBox body = new HBox(18, addPanel, libraryPanel, insightPanel);
-        HBox.setHgrow(libraryPanel, Priority.ALWAYS);
-        body.setPadding(new Insets(20));
+    private VBox content() {
+        VBox library = libraryPanel();
+        library.setMaxWidth(Double.MAX_VALUE);
+        library.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        VBox body = new VBox(library);
+        VBox.setVgrow(library, Priority.ALWAYS);
+        body.setPadding(new Insets(20, 70, 20, 70));
         return body;
     }
 
@@ -132,7 +143,7 @@ public class App extends Application {
                 lookup, dictionaryStatus,
                 thresholdLabel, threshold, add);
         panel.getStyleClass().add("panel");
-        panel.setPrefWidth(290);
+        panel.setPrefWidth(460);
         return panel;
     }
 
@@ -152,20 +163,20 @@ public class App extends Application {
                 super.updateItem(word, empty);
                 if (empty || word == null) { setGraphic(null); return; }
                 Label title = new Label(word.text()); title.getStyleClass().add("word-title");
-                Label definition = new Label(word.definition()); definition.getStyleClass().add("definition");
-                definition.setWrapText(true);
-                Label impression = new Label("第一认知：" + blankAsDash(word.firstImpression()));
-                impression.getStyleClass().add("impression");
+                Label definition = new Label(coreChineseMeaning(word.definition())); definition.getStyleClass().add("compact-definition");
+                definition.setWrapText(false);
                 Label mastery = new Label("学习状态：" + word.mastery().label());
                 mastery.getStyleClass().add("mastery-label");
-                HBox titleRow = new HBox(8, title);
-                VBox card = new VBox(4, titleRow, definition, impression, mastery);
-                card.getStyleClass().add("word-card");
-                setGraphic(card);
+                Region spacer = new Region();
+                HBox row = new HBox(14, title, definition, spacer, mastery);
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.getStyleClass().addAll("word-card", "compact-word-row");
+                setGraphic(row);
             }
             {
                 setOnDragDetected(event -> {
-                    if (getItem() == null) return;
+                    if (getItem() == null || !searchQuery.isBlank()) return;
                     Dragboard dragboard = startDragAndDrop(TransferMode.MOVE);
                     ClipboardContent content = new ClipboardContent();
                     content.putString(getItem().text());
@@ -198,24 +209,12 @@ public class App extends Application {
                 });
             }
         });
-        Label reorderHint = new Label("上下拖动词卡可调整顺序；删除和批量删除请使用“词库管理”。");
+        Label reorderHint = new Label("输入关键词可搜索；上下拖动词条可调整顺序；删除请使用“词库管理”。");
         reorderHint.getStyleClass().add("muted");
         VBox panel = new VBox(8, top, reorderHint, wordList);
         VBox.setVgrow(wordList, Priority.ALWAYS);
         panel.getStyleClass().add("panel");
-        panel.setMinWidth(330);
-        return panel;
-    }
-
-    private VBox insightPanel() {
-        Label heading = new Label("本次发现的关联");
-        heading.getStyleClass().add("section-title");
-        Label body = new Label("添加单词后，这里会展示系统计算出的形近关系。\n\n例如：\nderive ↔ deprive\n共同轮廓：de + rive\n差异：deprive 在中间多了 p\n\n下一版可在这里加入 AI 语境释义、意象建议与词义网络。");
-        body.setWrapText(true);
-        body.getStyleClass().add("muted");
-        VBox panel = new VBox(12, heading, body);
-        panel.getStyleClass().addAll("panel", "insight-panel");
-        panel.setPrefWidth(260);
+        panel.setMinWidth(600);
         return panel;
     }
 
@@ -312,9 +311,12 @@ public class App extends Application {
     }
 
     private void refreshWords() {
-        List<Word> words = repository.allWords();
+        List<Word> allWords = repository.allWords();
+        List<Word> words = searchQuery.isBlank() ? allWords : allWords.stream()
+                .filter(word -> word.text().contains(searchQuery) || word.definition().toLowerCase().contains(searchQuery))
+                .toList();
         libraryWords.setAll(words);
-        countLabel.setText(words.size() + " 个词");
+        countLabel.setText(searchQuery.isBlank() ? allWords.size() + " 个词" : words.size() + " / " + allWords.size() + " 个词");
     }
 
     private int indexOf(String word) {
@@ -347,6 +349,19 @@ public class App extends Application {
         new LibraryManagerWindow(repository, this::refreshWords).show();
     }
 
+    private void openAddWordWindow() {
+        Stage stage = new Stage();
+        stage.setTitle("English Word Bank · 添加单词");
+        VBox root = new VBox(addPanel());
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("add-window-root");
+        Scene scene = new Scene(root, 510, 660);
+        scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setMinWidth(460);
+        stage.show();
+    }
+
     private void chooseDataFolder(Stage stage) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("选择词库数据保存目录");
@@ -372,6 +387,15 @@ public class App extends Application {
     }
 
     private void updatePathLabel() { pathLabel.setText(dataDirectory.toString()); }
+    private static String coreChineseMeaning(String definition) {
+        String normalized = definition.replace("\r", "");
+        int chinese = normalized.indexOf("中文释义\n");
+        if (chinese >= 0) normalized = normalized.substring(chinese + "中文释义\n".length());
+        int english = normalized.indexOf("\n\n英文补充释义");
+        if (english >= 0) normalized = normalized.substring(0, english);
+        String firstLine = normalized.lines().filter(line -> !line.isBlank()).findFirst().orElse("暂无中文释义");
+        return firstLine.length() > 42 ? firstLine.substring(0, 42) + "…" : firstLine;
+    }
     private static String blankAsDash(String value) { return value == null || value.isBlank() ? "—" : value; }
     private void showError(String message) { new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).showAndWait(); }
 }
